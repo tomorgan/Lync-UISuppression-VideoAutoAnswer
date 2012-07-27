@@ -34,3 +34,5 @@ To disable UISuppression Mode:
 	1. Ensure communicator.exe isn't running.
 	2. Set UISuppressionMode key to value of 0.
 	3. Restart Lync client.
+	
+--
