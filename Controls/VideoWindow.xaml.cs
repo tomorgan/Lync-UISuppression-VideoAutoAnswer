@@ -86,7 +86,6 @@ namespace LyncUISupressionWrapper.Controls
         {
             var thisControl = (VideoWindow)sender;
             var isPlaying = (bool)args.NewValue;
-
             string stateName = GetStateName(thisControl, isPlaying);
 
             VisualStateManager.GoToElementState(thisControl.grdControl, stateName, true);
