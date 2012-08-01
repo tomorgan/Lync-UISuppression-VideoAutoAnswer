@@ -304,8 +304,7 @@ namespace LyncUISupressionWrapper
             if (e.NewState == ModalityState.Connected)
             {
                 var videoChannel = ((AVModality)_conversation.Modalities[ModalityTypes.AudioVideo]).VideoChannel;
-
-
+                
                 videoChannel.StateChanged += VideoChannel_StateChanged;
 
                 //TODO: race condition needs sorting out
