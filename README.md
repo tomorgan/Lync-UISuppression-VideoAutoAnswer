@@ -11,13 +11,9 @@ Video AutoAnswer using Microsoft Lync in UI Suppression Mode
 * Place call to single user, two-way video sharing
 * Uses the [Lync 2010 Client SDK](http://www.microsoft.com/en-us/download/details.aspx?id=18898) (which you will need).
 
-##Known Issues
-* Possibly outgoing video not always displayed in corner of screen. Seems to be resolved if you retry. We think this may be a hardware device timing issue, or possibly something environmental.
-* No visual feedback when placing a call if call is declined.
-
 ##To Do
-* Fix bugs
-* [add features here] - we're open to suggestions!
+* There's a couple of issues we know about (listed in the Issues section) which we're keen to fix ASAP.
+* Add more features. Let us know what by adding an issue with a enhancement label.
 
 ##Things to know
 
