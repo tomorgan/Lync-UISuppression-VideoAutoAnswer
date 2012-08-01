@@ -4,7 +4,6 @@ using LyncUISupressionWrapper.Controls.Enums;
 using Microsoft.Lync.Model;
 using Microsoft.Lync.Model.Conversation;
 using Microsoft.Lync.Model.Conversation.AudioVideo;
-using Microsoft.Lync.Model.Internal;
 
 namespace LyncUISupressionWrapper
 {
@@ -107,16 +106,13 @@ namespace LyncUISupressionWrapper
             _client.ConversationManager.ConversationRemoved += ConversationManager_ConversationRemoved;
         }
 
-        static void ConversationManager_ConversationAdded(object sender, Microsoft.Lync.Model.Conversation.ConversationManagerEventArgs e)
+        private static void ConversationManager_ConversationAdded(object sender, Microsoft.Lync.Model.Conversation.ConversationManagerEventArgs e)
         {
             var conversation = e.Conversation;
-
-
 
             // Note - only handles 1 conversation at time
             if (_conversation != null)
                 conversation.End();
-
 
             Console.WriteLine(conversation.Modalities[ModalityTypes.AudioVideo].State);
 
@@ -154,7 +150,7 @@ namespace LyncUISupressionWrapper
             }
         }
 
-        static void conversation_StateChanged(object sender, ConversationStateChangedEventArgs e)
+        private static void conversation_StateChanged(object sender, ConversationStateChangedEventArgs e)
         {
             if (e.NewState == ConversationState.Terminated)
             {
@@ -162,9 +158,7 @@ namespace LyncUISupressionWrapper
             }
         }
 
-
-
-        static void conversation_ParticipantAdded(object source, ParticipantCollectionChangedEventArgs data)
+        private static void conversation_ParticipantAdded(object source, ParticipantCollectionChangedEventArgs data)
         {
             if (data.Participant.IsSelf != true)
             {
@@ -189,16 +183,123 @@ namespace LyncUISupressionWrapper
 
         }
 
+        public static void SignIn(string userAtHost, string domainAndUsername, string password)
+        {
+            try
+            {
+                var uri = userAtHost;
+                if (userAtHost.StartsWith("sip:"))
+                    uri = userAtHost.Remove(0, 4);
 
+                _client.BeginSignIn(uri, domainAndUsername, password, EndSignIn, _client);
+            }
+            catch (Exception)
+            {
+                OnSignInFailed();
+            }
+        }
 
-        static void ConversationManager_ConversationRemoved(object sender, ConversationManagerEventArgs e)
+        public static void Dispose()
+        {
+            if (_client.State == ClientState.SignedIn)
+            {
+                _client.BeginSignOut(EndSignout, _client);
+            }
+            else
+            {
+                _client.BeginShutdown(EndShutdown, _client);
+            }
+        }
+
+        public static void PlaceCall(string sipUri)
+        {
+            _outgoingSipUri = sipUri;
+            var conversation = _client.ConversationManager.AddConversation();
+        }
+
+        #endregion
+
+        #region Private methods
+
+        private static void RaiseVideoAvailable(VideoWindow videoWindow, VideoDirection direction)
+        {
+            // Gets the current window style and modifies it
+            long currentStyle = videoWindow.WindowStyle;
+            currentStyle = currentStyle & ~lDisableWindowStyles;
+            currentStyle = currentStyle | lEnableWindowStyles;
+            videoWindow.WindowStyle = (int)currentStyle;
+
+            videoWindow.Height = 100;
+            videoWindow.Width = 100;
+
+            _incomingVideoStreamStarted = true;
+            OnVideoAvailabilityChanged(new LyncVideoWindow(videoWindow), direction, true); // Allow any listeners to attach the video window, then make visible
+            videoWindow.Visible = OATRUE;
+        }
+
+        private static void RaiseVideoUnavailable(VideoWindow videoWindow, VideoDirection direction)
+        {
+            _incomingVideoStreamStarted = false;
+            OnVideoAvailabilityChanged(new LyncVideoWindow(videoWindow), direction, false);
+        }
+
+        private static void EndShutdown(IAsyncResult result)
+        {
+            try
+            {
+                var client = (LyncClient)result.AsyncState;
+                client.EndShutdown(result);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+        }
+
+        private static void EndSignout(IAsyncResult result)
+        {
+            try
+            {
+                var client = (LyncClient)result.AsyncState;
+                client.EndSignOut(result);
+                _client.BeginShutdown(EndShutdown, _client);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+        }
+
+        private static void EndSignIn(IAsyncResult ar)
+        {
+            try
+            {
+                if (ar.IsCompleted)
+                {
+                    var client = ar.AsyncState as LyncClient;
+                    client.EndSignIn(ar);
+
+                    OnSignedIn();
+                }
+            }
+            catch (Exception)
+            {
+                OnSignInFailed();
+            }
+        }
+
+        #endregion
+
+        #region Event Handlers
+
+        private static void ConversationManager_ConversationRemoved(object sender, ConversationManagerEventArgs e)
         {
             // TODO - this will probably kill the existing conversation, if a new one comes in - change it!
             _conversation = null;
             OnCallEnded();
         }
 
-        static void avModality_ModalityStateChanged(object sender, ModalityStateChangedEventArgs e)
+        private static void avModality_ModalityStateChanged(object sender, ModalityStateChangedEventArgs e)
         {
             if (e.NewState == ModalityState.Connected)
             {
@@ -228,7 +329,7 @@ namespace LyncUISupressionWrapper
             }
         }
 
-        static void VideoChannel_StateChanged(object sender, ChannelStateChangedEventArgs e)
+        private static void VideoChannel_StateChanged(object sender, ChannelStateChangedEventArgs e)
         {
             var videoChannel = (VideoChannel)sender;
 
@@ -284,116 +385,6 @@ namespace LyncUISupressionWrapper
 
         }
 
-        public static void SignIn(string userAtHost, string domainAndUsername, string password)
-        {
-            try
-            {
-                var uri = userAtHost;
-                if (userAtHost.StartsWith("sip:"))
-                    uri = userAtHost.Remove(0, 4);
-
-                _client.BeginSignIn(uri, domainAndUsername, password, SignInCallback, _client);
-            }
-            catch (Exception)
-            {
-                OnSignInFailed();
-            }
-        }
-
-        public static void Dispose()
-        {
-            if (_client.State == ClientState.SignedIn)
-            {
-                _client.BeginSignOut(EndSignout, _client);
-            }
-            else
-            {
-                _client.BeginShutdown(EndShutdown, _client);
-            }
-        }
-
-        public static void PlaceCall(string sipUri)
-        {
-            _outgoingSipUri = sipUri;
-            var conversation = _client.ConversationManager.AddConversation();
-        }
-
-
-
-        #endregion
-
-        #region Signin
-
-        private static void SignInCallback(IAsyncResult ar)
-        {
-            try
-            {
-                if (ar.IsCompleted)
-                {
-                    var client = ar.AsyncState as LyncClient;
-                    client.EndSignIn(ar);
-
-                    OnSignedIn();
-                }
-            }
-            catch (Exception)
-            {
-                OnSignInFailed();
-            }
-        }
-
-        #endregion
-
-        #region Private methods
-
-        private static void RaiseVideoAvailable(VideoWindow videoWindow, VideoDirection direction)
-        {
-            // Gets the current window style and modifies it
-            long currentStyle = videoWindow.WindowStyle;
-            currentStyle = currentStyle & ~lDisableWindowStyles;
-            currentStyle = currentStyle | lEnableWindowStyles;
-            videoWindow.WindowStyle = (int)currentStyle;
-
-            videoWindow.Height = 100;
-            videoWindow.Width = 100;
-
-            _incomingVideoStreamStarted = true;
-            OnVideoAvailabilityChanged(new LyncVideoWindow(videoWindow), direction, true); // Allow any listeners to attach the video window, then make visible
-            videoWindow.Visible = OATRUE;
-        }
-
-        private static void RaiseVideoUnavailable(VideoWindow videoWindow, VideoDirection direction)
-        {
-            _incomingVideoStreamStarted = false;
-            OnVideoAvailabilityChanged(new LyncVideoWindow(videoWindow), direction, false);
-        }
-
-        private static void EndShutdown(IAsyncResult result)
-        {
-            try
-            {
-                var client = (LyncClient)result.AsyncState;
-                client.EndShutdown(result);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
-        }
-
-        private static void EndSignout(IAsyncResult result)
-        {
-            try
-            {
-                var client = (LyncClient)result.AsyncState;
-                client.EndSignOut(result);
-                _client.BeginShutdown(EndShutdown, _client);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
-        }
 
         #endregion
     }

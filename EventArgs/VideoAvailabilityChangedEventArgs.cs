@@ -1,5 +1,4 @@
 ﻿using System;
-using Microsoft.Lync.Model.Conversation.AudioVideo;
 using LyncUISupressionWrapper.Controls.Enums;
 
 namespace LyncUISupressionWrapper

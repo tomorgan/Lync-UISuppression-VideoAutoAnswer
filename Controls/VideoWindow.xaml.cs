@@ -68,26 +68,6 @@ namespace LyncUISupressionWrapper.Controls
             }
         }
 
-        private void SetVideoControlProperties(VideoAvailabilityChangedEventArgs e)
-        {
-            Dispatcher.Invoke( (Action) delegate()
-                {
-                    Playing = e.IsAvailable;
-                    VideoWindowFeed = e.IsAvailable ? e.VideoWindow : null;
-                }
-            );
-        }
-
-        private void GetDirectionProperty()
-        {
-            Dispatcher.Invoke(new Action(
-                delegate()
-                {
-                    _direction = (VideoDirection)GetValue(DirectionProperty);
-                }
-               ));
-        }
-
         #endregion
 
         #region UI Events
@@ -112,6 +92,22 @@ namespace LyncUISupressionWrapper.Controls
             VisualStateManager.GoToElementState(thisControl.grdControl, stateName, true);
         }
 
+        private static void OnVideoWindowPropertyChanged(object sender, DependencyPropertyChangedEventArgs args)
+        {
+            var thisControl = (VideoWindow)sender;
+            var videoWindow = (LyncVideoWindow)args.NewValue;
+
+            if (videoWindow != null)
+            {
+                videoWindow.Owner = thisControl.videoPanel.Handle.ToInt32();
+                videoWindow.SetWindowPosition(0, 0, thisControl.videoPanel.Width, thisControl.videoPanel.Height);
+            }
+        }
+
+        #endregion
+
+        #region Private Methods
+
         private static string GetStateName(VideoWindow window, bool isPlaying)
         {
             if (isPlaying)
@@ -124,16 +120,24 @@ namespace LyncUISupressionWrapper.Controls
             }
         }
 
-        private static void OnVideoWindowPropertyChanged(object sender, DependencyPropertyChangedEventArgs args)
+        private void SetVideoControlProperties(VideoAvailabilityChangedEventArgs e)
         {
-            var thisControl = (VideoWindow)sender;
-            var videoWindow = (LyncVideoWindow)args.NewValue;
-
-            if (videoWindow != null)
+            Dispatcher.Invoke((Action)delegate()
             {
-                videoWindow.Owner = thisControl.videoPanel.Handle.ToInt32();
-                videoWindow.SetWindowPosition(0, 0, thisControl.videoPanel.Width, thisControl.videoPanel.Height);
+                Playing = e.IsAvailable;
+                VideoWindowFeed = e.IsAvailable ? e.VideoWindow : null;
             }
+            );
+        }
+
+        private void GetDirectionProperty()
+        {
+            Dispatcher.Invoke(new Action(
+                delegate()
+                {
+                    _direction = (VideoDirection)GetValue(DirectionProperty);
+                }
+               ));
         }
 
         #endregion

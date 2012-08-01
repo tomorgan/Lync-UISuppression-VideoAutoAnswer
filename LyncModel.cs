@@ -1,7 +1,6 @@
 ﻿using System;
-using Microsoft.Lync.Model;
 using System.Collections.Generic;
-using System.Linq;
+using Microsoft.Lync.Model;
 
 namespace LyncUISupressionWrapper
 {
