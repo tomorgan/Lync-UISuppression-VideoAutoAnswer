@@ -63,8 +63,10 @@
     </Compile>
     <Compile Include="Enum\ApplicationState.cs" />
     <Compile Include="Enum\VideoDirection.cs" />
+    <Compile Include="EventArgs\PhotoChangedEventArgs.cs" />
     <Compile Include="EventArgs\PresenceInformationEventArgs.cs" />
     <Compile Include="EventArgs\StateChangedEventArgs.cs" />
+    <Compile Include="EventArgs\StringValueInformationEventArgs.cs" />
     <Compile Include="EventArgs\VideoAvailabilityChangedEventArgs.cs" />
     <Compile Include="Extensions\ControlExtensions.cs" />
     <Compile Include="Interfaces\ILyncModel.cs" />

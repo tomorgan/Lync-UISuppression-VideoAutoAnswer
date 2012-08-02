@@ -35,6 +35,25 @@ namespace LyncUISupressionWrapper
             PresenceChanged(null, new PresenceInformationEventArgs(presence));
         }
 
+        public event EventHandler<StringValueInformationEventArgs> ActivityChanged = delegate { };
+        private void OnActivityChanged(string activity)
+        {
+            ActivityChanged(null, new StringValueInformationEventArgs(activity));
+        }
+
+        public event EventHandler<StringValueInformationEventArgs> DisplayNameChanged = delegate { };
+        private void OnDisplayNameChanged(string name)
+        {
+            DisplayNameChanged(null, new StringValueInformationEventArgs(name));
+        }
+
+        public event EventHandler<PhotoChangedEventArgs> PhotoChanged = delegate { };
+        private void OnPhotoChanged(BitmapImage image)
+        {
+            PhotoChanged(null, new PhotoChangedEventArgs(image));
+        }
+
+
         #endregion
 
         #region Properties
@@ -92,108 +111,24 @@ namespace LyncUISupressionWrapper
             Lync.SignIn(userAtHost, domainAndUsername, password);
         }
 
-        public void SubscribeForPresenceChange(string sipUri)
+        public void SubscribeForInformationUpdates(string sipUri)
         {
             _contact = Lync.LyncContactManager.GetContactByUri(sipUri);
             _contact.ContactInformationChanged += contact_ContactInformationChanged;
-
-
-
+            
             var subscription = Lync.LyncContactManager.CreateSubscription();
             subscription.AddContact(_contact);
-            subscription.Subscribe(ContactSubscriptionRefreshRate.High, new List<ContactInformationType>() { ContactInformationType.Availability });
+
+            List<ContactInformationType> informationItems = new List<ContactInformationType>();
+            informationItems.Add(ContactInformationType.Availability);
+            informationItems.Add(ContactInformationType.PersonalNote);
+            informationItems.Add(ContactInformationType.DisplayName);
+            informationItems.Add(ContactInformationType.Photo);
+
+            subscription.Subscribe(ContactSubscriptionRefreshRate.High, informationItems);
         }
 
-        public string GetContactDisplayName(string sipUri)
-        {
-            _contact = Lync.LyncContactManager.GetContactByUri(sipUri);
-
-
-            if (_contact != null)
-            {
-
-                while (_contact.ContactManager == null)
-                {
-                    System.Threading.Thread.Sleep(500);
-                }
-
-                string contact;
-                try
-                {
-                    contact = _contact.GetContactInformation(ContactInformationType.DisplayName).ToString();
-                    return contact;
-                }
-                catch (Microsoft.Lync.Model.NotReadyException)
-                {
-                    //TODO: this is horrible, but the data that is returned from GetContactInformation seems to be back-filled AFTER returning.
-                    //Therefore, sometimes a NotReadyException is thrown when you attempt to use the data.
-                    //try once more
-                    System.Threading.Thread.Sleep(1000);
-                    contact = _contact.GetContactInformation(ContactInformationType.DisplayName).ToString();
-                    return contact;
-                }
-            }
-            else
-            {
-                return string.Empty;
-            }
-        }
-
-        public BitmapImage GetContactPhoto(string sipUri)
-        {
-            try
-            {
-                _contact = Lync.LyncContactManager.GetContactByUri(sipUri);
-                if (_contact != null)
-                {
-
-                    while (_contact.ContactManager == null)
-                    {
-                        System.Threading.Thread.Sleep(500);
-                    }
-
-
-                    BitmapImage userImageBitMap = new BitmapImage();
-                    System.IO.Stream photoStream;
-
-                    try
-                    {
-                        photoStream = _contact.GetContactInformation(ContactInformationType.Photo) as Stream;
-                    }
-                    catch (Microsoft.Lync.Model.NotReadyException ex)
-                    {
-                        //TODO: this is horrible, but the data that is returned from GetContactInformation seems to be back-filled AFTER returning.
-                        //Therefore, sometimes a NotReadyException is thrown when you attempt to use the data.
-                        //try once more
-                        System.Threading.Thread.Sleep(1000);
-                        photoStream = _contact.GetContactInformation(ContactInformationType.Photo) as Stream;
-                    }
-
-
-                    if (photoStream != null)
-                    {
-                        userImageBitMap.BeginInit();
-                        userImageBitMap.StreamSource = photoStream;
-                        userImageBitMap.EndInit();
-                        userImageBitMap.Freeze();
-                        return userImageBitMap;
-                    }
-                    System.Diagnostics.Debug.WriteLine("photoStream is null");
-                    return null;
-                }
-                System.Diagnostics.Debug.WriteLine("contact is null");
-                return null;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine("exception thrown");
-                return null;
-            }
-
-        }
-
-
-
+       
         public void StartCall(string sipUri)
         {
             Lync.PlaceCall(sipUri);
@@ -213,6 +148,51 @@ namespace LyncUISupressionWrapper
         private ContactAvailability GetPresence()
         {
             return (ContactAvailability)_contact.GetContactInformation(ContactInformationType.Availability);
+        }
+
+        private string GetPersonalNote()
+        {
+            return (string)_contact.GetContactInformation(ContactInformationType.PersonalNote);
+        }
+
+        private string GetDisplayName()
+        {
+            return (string)_contact.GetContactInformation(ContactInformationType.DisplayName);
+        }
+
+        private BitmapImage GetPhoto()
+        {
+            Stream photoStream;
+
+            try
+            {
+                photoStream = _contact.GetContactInformation(ContactInformationType.Photo) as Stream;
+            }
+            catch (NotReadyException)
+            {
+                //TODO: is it really true that Lync returns from GetContactInformation before it is ready to show the photo stream?
+                System.Threading.Thread.Sleep(1000);
+                photoStream = _contact.GetContactInformation(ContactInformationType.Photo) as Stream;
+            }
+            catch (ItemNotFoundException)
+            {
+                //no picture available
+                return null;
+            }
+
+            
+            BitmapImage userImageBitMap = new BitmapImage();
+                    
+                    if (photoStream != null)
+                    {
+                        userImageBitMap.BeginInit();
+                        userImageBitMap.StreamSource = photoStream;
+                        userImageBitMap.EndInit();
+                        userImageBitMap.Freeze();
+                        return userImageBitMap;
+                    }
+                    return null;
+                
         }
 
         #endregion
@@ -255,6 +235,18 @@ namespace LyncUISupressionWrapper
             if (e.ChangedContactInformation.Contains(ContactInformationType.Availability))
             {
                 OnPresenceChanged(GetPresence());
+            }
+            if (e.ChangedContactInformation.Contains(ContactInformationType.PersonalNote))
+            {
+                OnActivityChanged(GetPersonalNote());
+            }
+            if (e.ChangedContactInformation.Contains(ContactInformationType.DisplayName))
+            {
+                OnDisplayNameChanged(GetDisplayName());
+            }
+            if (e.ChangedContactInformation.Contains(ContactInformationType.Photo))
+            {
+                OnPhotoChanged(GetPhoto());
             }
         }
 
