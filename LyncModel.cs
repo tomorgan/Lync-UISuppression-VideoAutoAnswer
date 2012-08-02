@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.Lync.Model;
+using System.IO;
+using System.Windows.Media.Imaging;
+
 
 namespace LyncUISupressionWrapper
 {
@@ -94,10 +97,102 @@ namespace LyncUISupressionWrapper
             _contact = Lync.LyncContactManager.GetContactByUri(sipUri);
             _contact.ContactInformationChanged += contact_ContactInformationChanged;
 
+
+
             var subscription = Lync.LyncContactManager.CreateSubscription();
             subscription.AddContact(_contact);
             subscription.Subscribe(ContactSubscriptionRefreshRate.High, new List<ContactInformationType>() { ContactInformationType.Availability });
         }
+
+        public string GetContactDisplayName(string sipUri)
+        {
+            _contact = Lync.LyncContactManager.GetContactByUri(sipUri);
+
+
+            if (_contact != null)
+            {
+
+                while (_contact.ContactManager == null)
+                {
+                    System.Threading.Thread.Sleep(500);
+                }
+
+                string contact;
+                try
+                {
+                    contact = _contact.GetContactInformation(ContactInformationType.DisplayName).ToString();
+                    return contact;
+                }
+                catch (Microsoft.Lync.Model.NotReadyException)
+                {
+                    //TODO: this is horrible, but the data that is returned from GetContactInformation seems to be back-filled AFTER returning.
+                    //Therefore, sometimes a NotReadyException is thrown when you attempt to use the data.
+                    //try once more
+                    System.Threading.Thread.Sleep(1000);
+                    contact = _contact.GetContactInformation(ContactInformationType.DisplayName).ToString();
+                    return contact;
+                }
+            }
+            else
+            {
+                return string.Empty;
+            }
+        }
+
+        public BitmapImage GetContactPhoto(string sipUri)
+        {
+            try
+            {
+                _contact = Lync.LyncContactManager.GetContactByUri(sipUri);
+                if (_contact != null)
+                {
+
+                    while (_contact.ContactManager == null)
+                    {
+                        System.Threading.Thread.Sleep(500);
+                    }
+
+
+                    BitmapImage userImageBitMap = new BitmapImage();
+                    System.IO.Stream photoStream;
+
+                    try
+                    {
+                        photoStream = _contact.GetContactInformation(ContactInformationType.Photo) as Stream;
+                    }
+                    catch (Microsoft.Lync.Model.NotReadyException ex)
+                    {
+                        //TODO: this is horrible, but the data that is returned from GetContactInformation seems to be back-filled AFTER returning.
+                        //Therefore, sometimes a NotReadyException is thrown when you attempt to use the data.
+                        //try once more
+                        System.Threading.Thread.Sleep(1000);
+                        photoStream = _contact.GetContactInformation(ContactInformationType.Photo) as Stream;
+                    }
+
+
+                    if (photoStream != null)
+                    {
+                        userImageBitMap.BeginInit();
+                        userImageBitMap.StreamSource = photoStream;
+                        userImageBitMap.EndInit();
+                        userImageBitMap.Freeze();
+                        return userImageBitMap;
+                    }
+                    System.Diagnostics.Debug.WriteLine("photoStream is null");
+                    return null;
+                }
+                System.Diagnostics.Debug.WriteLine("contact is null");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("exception thrown");
+                return null;
+            }
+
+        }
+
+
 
         public void StartCall(string sipUri)
         {
