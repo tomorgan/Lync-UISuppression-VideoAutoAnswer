@@ -290,7 +290,6 @@ namespace LyncUISupressionWrapper
 
         private static void ConversationManager_ConversationRemoved(object sender, ConversationManagerEventArgs e)
         {
-            // TODO - this will probably kill the existing conversation, if a new one comes in - change it!
             _conversation = null;
             OnCallEnded();
         }
@@ -303,21 +302,36 @@ namespace LyncUISupressionWrapper
                 {
                     var videoChannel = ((AVModality)_conversation.Modalities[ModalityTypes.AudioVideo]).VideoChannel;
 
+                    //wire up to state changes to control the UI display of the control.
+                    //wire up to action availability events to know when the channel is ready to be started.
                     videoChannel.StateChanged += VideoChannel_StateChanged;
+                    videoChannel.ActionAvailabilityChanged += videoChannel_ActionAvailabilityChanged;
 
-                    while (!videoChannel.CanInvoke(ChannelAction.Start) && (videoChannel.State == ChannelState.Notified || videoChannel.State == ChannelState.Connecting || videoChannel.State == ChannelState.Receive))
-                    {
-                        System.Threading.Thread.Sleep(100);
-                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex);
+            }
+        }
 
+        static void videoChannel_ActionAvailabilityChanged(object sender, ChannelActionAvailabilityEventArgs e)
+        {
+            try
+            {
+                if (e.Action == ChannelAction.Start && e.IsAvailable == true)
+                {
+                    var videoChannel = (VideoChannel)sender;
                     if (videoChannel.CanInvoke(ChannelAction.Start))
                     {
-                        System.Diagnostics.Debug.WriteLine("calling begin start");
-                        videoChannel.BeginStart(videoChannelReallyEndStart, videoChannel);
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine(String.Format("Channel could not be invoked, state is {0}", videoChannel.State));
+
+                        //even though the Action IsAvailable is set to true *AND* CanInvoke is true, sometimes the channel isn't ready. There's no good
+                        //way of knowing when it'll become ready, and if you try and call it when it isn't ready, it won't error. However, the call back (videoChannelEndStart
+                        //in this case) never gets hit. The only thing I can think of in this situation is to wait..
+                        System.Threading.Thread.Sleep(2000);
+
+                        videoChannel.BeginStart(videoChannelEndStart, videoChannel);
+
                     }
                 }
             }
@@ -327,12 +341,10 @@ namespace LyncUISupressionWrapper
             }
         }
 
-        private static void videoChannelReallyEndStart(IAsyncResult result)
+        private static void videoChannelEndStart(IAsyncResult result)
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("at end start");
-                System.Diagnostics.Debug.WriteLine(result.IsCompleted);
                 VideoChannel channel = (VideoChannel)result.AsyncState;
                 channel.EndStart(result);
                 RaiseVideoAvailable(channel.CaptureVideoWindow, VideoDirection.Outgoing);
@@ -345,7 +357,10 @@ namespace LyncUISupressionWrapper
 
         private static void VideoChannel_StateChanged(object sender, ChannelStateChangedEventArgs e)
         {
+            System.Diagnostics.Debug.WriteLine(string.Format("Video Channel state change from {0} to {1}", e.OldState, e.NewState));
             var videoChannel = (VideoChannel)sender;
+
+
 
             if (_incomingChannelStates.Contains(e.NewState) && !_incomingChannelStates.Contains(e.OldState))    // Incoming newly available
             {

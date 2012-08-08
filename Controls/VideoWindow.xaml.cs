@@ -10,7 +10,7 @@ namespace LyncUISupressionWrapper.Controls
         #region Fields
 
         private ILyncModel _model;
-        private VideoDirection _direction;
+        
 
         #endregion
 
@@ -60,12 +60,7 @@ namespace LyncUISupressionWrapper.Controls
 
         void model_VideoAvailabilityChanged(object sender, VideoAvailabilityChangedEventArgs e)
         {
-            GetDirectionProperty();
-
-            if (e.Direction == _direction)
-            {
-                SetVideoControlProperties(e);
-            }
+            SetVideoControlProperties(e);
         }
 
         #endregion
@@ -123,21 +118,16 @@ namespace LyncUISupressionWrapper.Controls
         {
             Dispatcher.Invoke((Action)delegate()
             {
-                Playing = e.IsAvailable;
-                VideoWindowFeed = e.IsAvailable ? e.VideoWindow : null;
+                if (e.Direction == Direction)
+                {
+                    Playing = e.IsAvailable;
+                    VideoWindowFeed = e.IsAvailable ? e.VideoWindow : null;
+                }
             }
             );
         }
 
-        private void GetDirectionProperty()
-        {
-            Dispatcher.Invoke(new Action(
-                delegate()
-                {
-                    _direction = (VideoDirection)GetValue(DirectionProperty);
-                }
-               ));
-        }
+     
 
         #endregion
     }
