@@ -114,15 +114,11 @@ namespace LyncUISupressionWrapper
             if (_conversation != null)
                 conversation.End();
 
-            Console.WriteLine(conversation.Modalities[ModalityTypes.AudioVideo].State);
-
-            // TODO - Check state
-            //if (!_conversation.Modalities.ContainsKey(ModalityTypes.AudioVideo) || _conversation.Modalities[ModalityTypes.AudioVideo].State != ModalityState.Notified) ;
-
             // TODO - Locking?
             _conversation = conversation;
 
             var avModality = (AVModality)_conversation.Modalities[ModalityTypes.AudioVideo];
+            System.Diagnostics.Debug.WriteLine(String.Format("avMod state is {0}", avModality.State));
 
             if (avModality.State == ModalityState.Notified)
             {
@@ -132,10 +128,10 @@ namespace LyncUISupressionWrapper
                 avModality.Accept();
 
                 OnCallAccepted();
-
             }
             else
             {
+                System.Diagnostics.Debug.WriteLine(String.Format("else avMod state is {0}", avModality.State));
                 //outgoing call
 
                 conversation.ParticipantAdded += conversation_ParticipantAdded;
@@ -301,30 +297,49 @@ namespace LyncUISupressionWrapper
 
         private static void avModality_ModalityStateChanged(object sender, ModalityStateChangedEventArgs e)
         {
-            if (e.NewState == ModalityState.Connected)
+            try
             {
-                var videoChannel = ((AVModality)_conversation.Modalities[ModalityTypes.AudioVideo]).VideoChannel;
-                
-                videoChannel.StateChanged += VideoChannel_StateChanged;
+                if (e.NewState == ModalityState.Connected)
+                {
+                    var videoChannel = ((AVModality)_conversation.Modalities[ModalityTypes.AudioVideo]).VideoChannel;
 
-                //TODO: race condition needs sorting out
-                System.Threading.Thread.Sleep(1000 * 5);
-                if (videoChannel.CanInvoke(ChannelAction.Start))
-                    videoChannel.BeginStart(videoChannelEndStart, videoChannel);
+                    videoChannel.StateChanged += VideoChannel_StateChanged;
+
+                    while (!videoChannel.CanInvoke(ChannelAction.Start) && (videoChannel.State == ChannelState.Notified || videoChannel.State == ChannelState.Connecting || videoChannel.State == ChannelState.Receive))
+                    {
+                        System.Threading.Thread.Sleep(100);
+                    }
+
+                    if (videoChannel.CanInvoke(ChannelAction.Start))
+                    {
+                        System.Diagnostics.Debug.WriteLine("calling begin start");
+                        videoChannel.BeginStart(videoChannelReallyEndStart, videoChannel);
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine(String.Format("Channel could not be invoked, state is {0}", videoChannel.State));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex);
             }
         }
 
-        private static void videoChannelEndStart(IAsyncResult result)
+        private static void videoChannelReallyEndStart(IAsyncResult result)
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine("at end start");
+                System.Diagnostics.Debug.WriteLine(result.IsCompleted);
                 VideoChannel channel = (VideoChannel)result.AsyncState;
                 channel.EndStart(result);
                 RaiseVideoAvailable(channel.CaptureVideoWindow, VideoDirection.Outgoing);
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                System.Diagnostics.Debug.WriteLine(ex);
             }
         }
 
