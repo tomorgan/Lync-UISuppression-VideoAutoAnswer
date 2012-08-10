@@ -1,4 +1,12 @@
-﻿using System;
+﻿/* Copyright (C) 2012 Modality Systems - All Rights Reserved
+ * You may use, distribute and modify this code under the
+ * terms of the Microsoft Public License, a copy of which 
+ * can be seen at: http://www.microsoft.com/en-us/openness/licenses.aspx
+ * 
+ * http://www.LyncAutoAnswer.com
+*/
+
+using System;
 using System.Collections.Generic;
 using LyncUISupressionWrapper.Controls.Enums;
 using Microsoft.Lync.Model;
@@ -195,7 +203,7 @@ namespace LyncUISupressionWrapper
             }
         }
 
-        public static void Dispose()
+        public static void ShutDown()
         {
             if (_client.State == ClientState.SignedIn)
             {
@@ -206,6 +214,17 @@ namespace LyncUISupressionWrapper
                 _client.BeginShutdown(EndShutdown, _client);
             }
         }
+
+
+        public static void SignOut()
+        {
+            if (_client.State == ClientState.SignedIn)
+            {
+                _client.BeginSignOut(EndSignout, _client);
+            }
+        }
+
+
 
         public static void PlaceCall(string sipUri)
         {
@@ -243,12 +262,11 @@ namespace LyncUISupressionWrapper
         {
             try
             {
-                var client = (LyncClient)result.AsyncState;
-                client.EndShutdown(result);
+                _client.EndShutdown(result);
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                System.Diagnostics.Debug.WriteLine(ex);
             }
         }
 
@@ -256,13 +274,15 @@ namespace LyncUISupressionWrapper
         {
             try
             {
-                var client = (LyncClient)result.AsyncState;
-                client.EndSignOut(result);
-                _client.BeginShutdown(EndShutdown, _client);
+                _client.EndSignOut(result);
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                System.Diagnostics.Debug.WriteLine(ex);
+            }
+            finally
+            {
+                _client.BeginShutdown(EndShutdown, _client);
             }
         }
 

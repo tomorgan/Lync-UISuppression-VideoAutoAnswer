@@ -1,4 +1,12 @@
-﻿using System;
+﻿/* Copyright (C) 2012 Modality Systems - All Rights Reserved
+ * You may use, distribute and modify this code under the
+ * terms of the Microsoft Public License, a copy of which 
+ * can be seen at: http://www.microsoft.com/en-us/openness/licenses.aspx
+ * 
+ * http://www.LyncAutoAnswer.com
+*/
+
+using System;
 using System.Collections.Generic;
 using Microsoft.Lync.Model;
 using System.IO;
@@ -135,10 +143,16 @@ namespace LyncUISupressionWrapper
             State = ApplicationState.CallInProgress;
         }
 
-        public void Dispose()
+      
+
+        public void SignOut()
         {
-            Lync.Dispose();
-            _instance = null;
+            Lync.SignOut();
+        }
+
+        public void Shutdown()
+        {
+            Lync.ShutDown();
         }
 
         #endregion

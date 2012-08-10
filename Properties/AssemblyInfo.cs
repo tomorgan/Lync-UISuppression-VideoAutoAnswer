@@ -8,9 +8,9 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("LyncUISupressionWrapper")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("Modality Systems (http://modalitydev.co.uk)")]
 [assembly: AssemblyProduct("LyncUISupressionWrapper")]
-[assembly: AssemblyCopyright("Copyright ©  2012")]
+[assembly: AssemblyCopyright("Copyright ©  2012 Modality Systems")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
